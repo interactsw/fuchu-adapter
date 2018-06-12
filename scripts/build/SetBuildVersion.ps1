@@ -1,12 +1,21 @@
 Param(
   [string]$BuildCounter,
-  [string]$AssemblyInfoPath
+  [string]$AssemblyInfoPath,
+  [string]$NugetPreviewPrefix
 )
 
 $majorMinorVersionNumber = "1.0"
 $thirdVersionPart = "4"
 $basicVersion = $majorMinorVersionNumber + ".0.0"
 $fullVersionNumber = $majorMinorVersionNumber + "." + $thirdVersionPart + "." + $BuildCounter
+if ($NugetPreviewPrefix)
+{
+    $nugetPackageVersion = $majorMinorVersionNumber + "." + $thirdVersionPart + "." + $NugetPreviewPrefix + "-" + $BuildCounter
+}
+else
+{
+    $nugetPackageVersion = $fullVersionNumber
+}
 
 Write-Host ("##teamcity[buildNumber '" + $fullVersionNumber + "']")
 

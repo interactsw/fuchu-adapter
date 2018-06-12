@@ -11,7 +11,7 @@
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>Visual Studio test adapter for Fuchu. Shows Fuchu tests in Visual Studio's Test Explorer, and also enables them to be run in Visual Studio Online builds.</description>
     <releaseNotes></releaseNotes>
-    <copyright>Copyright © 2016 Ian Griffiths</copyright>
+    <copyright>Copyright © 2016-2018 Ian Griffiths</copyright>
     <tags>Fuchu, Visual Studio, Test Adapter, testadapter</tags>
     <references>
     </references>
