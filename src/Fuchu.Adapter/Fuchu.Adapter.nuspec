@@ -17,12 +17,12 @@
     </references>
   </metadata>
   <files>
-    <file src="bin/Release/FSharp.Core.dll" target="tools\FSharp.Core.dll" />
-    <file src="bin/Release/Fuchu.VisualStudio.TestAdapter.dll" target="tools\Fuchu.VisualStudio.TestAdapter.dll" />
-    <file src="bin/Release/Mono.Cecil.dll" target="tools\Mono.Cecil.dll" />
-    <file src="bin/Release/Mono.Cecil.dll" target="tools\Mono.Cecil.dll" />
-    <file src="bin/Release/Mono.Cecil.Pdb.dll" target="tools\Mono.Cecil.Pdb.dll" />
-    <file src="bin/Release/Mono.Cecil.Rocks.dll" target="tools\Mono.Cecil.Rocks.dll" />
-    <file src="bin/Release/Newtonsoft.Json.dll" target="tools\Newtonsoft.Json.dll" />
+    <file src="bin/Release/net45/FSharp.Core.dll" target="tools\FSharp.Core.dll" />
+    <file src="bin/Release/net45/Fuchu.VisualStudio.TestAdapter.dll" target="tools\Fuchu.VisualStudio.TestAdapter.dll" />
+    <file src="bin/Release/net45/Mono.Cecil.dll" target="tools\Mono.Cecil.dll" />
+    <file src="bin/Release/net45/Mono.Cecil.dll" target="tools\Mono.Cecil.dll" />
+    <file src="bin/Release/net45/Mono.Cecil.Pdb.dll" target="tools\Mono.Cecil.Pdb.dll" />
+    <file src="bin/Release/net45/Mono.Cecil.Rocks.dll" target="tools\Mono.Cecil.Rocks.dll" />
+    <file src="bin/Release/net45/Newtonsoft.Json.dll" target="tools\Newtonsoft.Json.dll" />
   </files>
 </package>
