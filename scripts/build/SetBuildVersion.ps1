@@ -7,7 +7,9 @@ Param(
 $majorMinorVersionNumber = "1.0"
 $thirdVersionPart = "4"
 $basicVersion = $majorMinorVersionNumber + ".0.0"
+Write-Host "Basic version number: $basicVersion"
 $fullVersionNumber = $majorMinorVersionNumber + "." + $thirdVersionPart + "." + $BuildCounter
+Write-Host "Build-specific version number: $fullVersionNumber"
 if ($NugetPreviewPrefix)
 {
     $nugetPackageVersion = $majorMinorVersionNumber + "." + $thirdVersionPart + "." + $NugetPreviewPrefix + "-" + $BuildCounter
@@ -16,6 +18,7 @@ else
 {
     $nugetPackageVersion = $fullVersionNumber
 }
+Write-Host "NuGet package version: $nugetPackageVersion"
 
 Write-Host ("##teamcity[buildNumber '" + $fullVersionNumber + "']")
 
@@ -38,7 +41,7 @@ foreach ($nuspectFile in $nuspecs)
 {
     Write-Output "Updating $nuspectFile"
     [xml] $nuspec = Get-Content $nuspectFile
-    $nuspec.package.metadata.version = $fullVersionNumber
+    $nuspec.package.metadata.version = $nugetPackageVersion
     $nuspec.Save($nuspectFile)
 }
 
