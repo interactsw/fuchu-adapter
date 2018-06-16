@@ -12,7 +12,7 @@ $fullVersionNumber = $majorMinorVersionNumber + "." + $thirdVersionPart + "." + 
 Write-Host "Build-specific version number: $fullVersionNumber"
 if ($NugetPreviewLabel)
 {
-    $nugetPackageVersion = $majorMinorVersionNumber + "." + $thirdVersionPart + "-" + $NugetPreviewLabel + "-" + $BuildCounter
+    $nugetPackageVersion = $majorMinorVersionNumber + "." + $thirdVersionPart + "-" + $NugetPreviewLabel + $BuildCounter
 }
 else
 {
