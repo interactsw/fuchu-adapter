@@ -1,7 +1,7 @@
 Param(
   [string]$BuildCounter,
   [string]$AssemblyInfoPath,
-  [string]$NugetPreviewPrefix
+  [string]$NugetPreviewLabel
 )
 
 $majorMinorVersionNumber = "1.0"
@@ -10,9 +10,9 @@ $basicVersion = $majorMinorVersionNumber + ".0.0"
 Write-Host "Basic version number: $basicVersion"
 $fullVersionNumber = $majorMinorVersionNumber + "." + $thirdVersionPart + "." + $BuildCounter
 Write-Host "Build-specific version number: $fullVersionNumber"
-if ($NugetPreviewPrefix)
+if ($NugetPreviewLabel)
 {
-    $nugetPackageVersion = $majorMinorVersionNumber + "." + $thirdVersionPart + "." + $NugetPreviewPrefix + "-" + $BuildCounter
+    $nugetPackageVersion = $majorMinorVersionNumber + "." + $thirdVersionPart + "-" + $NugetPreviewLabel + "-" + $BuildCounter
 }
 else
 {
