@@ -5,7 +5,7 @@ Param(
 )
 
 $majorMinorVersionNumber = "1.0"
-$thirdVersionPart = "4"
+$thirdVersionPart = "5"
 $basicVersion = $majorMinorVersionNumber + ".0.0"
 Write-Host "Basic version number: $basicVersion"
 $fullVersionNumber = $majorMinorVersionNumber + "." + $thirdVersionPart + "." + $BuildCounter
