@@ -102,7 +102,11 @@ type Discoverer() =
                 let vsCallback = new VsDiscoverCallbackProxy(logger)
                 for assemblyPath in (sourcesUsingFuchu sources) do
                     use host = new TestAssemblyHost(assemblyPath)
+#if NETSTANDARD2_0
+                    let discoverProxy:DiscoverProxy = new DiscoverProxy(Tuple.Create<IObserver<string>>(vsCallback))
+#else
                     let discoverProxy = host.CreateInAppdomain<DiscoverProxy>([|Tuple.Create<IObserver<string>>(vsCallback)|])
+#endif
                     let testList = discoverProxy.DiscoverTests(assemblyPath)
                     let locationFinder = new SourceLocationFinder(assemblyPath)
                     for { TestCode = code; TypeName = typeName; MethodName = methodName } in testList do

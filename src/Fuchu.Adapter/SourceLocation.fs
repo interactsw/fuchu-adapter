@@ -45,8 +45,9 @@ type SourceLocationFinder(assemblyPath:string) =
 
     let getFirstOrDefaultSequencePoint (m:MethodDefinition) =
         m.Body.Instructions
-        |> Seq.tryFind (fun i -> (i.SequencePoint <> null && i.SequencePoint.StartLine <> lineNumberIndicatingHiddenLine))
-        |> Option.map (fun i -> i.SequencePoint)
+        |> Seq.map (fun i -> (i, m.DebugInformation.GetSequencePoint(i)))
+        |> Seq.tryFind (fun (_, sequencePoint) -> (sequencePoint <> null && sequencePoint.StartLine <> lineNumberIndicatingHiddenLine))
+        |> Option.map (fun (_, sequencePoint) -> sequencePoint)
 
     member this.getSourceLocation className methodName =
         match getMethods className with

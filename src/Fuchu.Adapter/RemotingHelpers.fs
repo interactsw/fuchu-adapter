@@ -2,12 +2,15 @@
 
 open System
 open System.IO
-open System.Runtime.Remoting
 open System.Reflection
 open System.Security
 open System.Security.Permissions
-open System.Security.Policy
 
+#if NETSTANDARD2_0
+#else
+open System.Runtime.Remoting
+open System.Security.Policy
+#endif
 
 /// <summary>
 /// Base class for objects accessible across AppDomain boundaries with
@@ -28,10 +31,15 @@ open System.Security.Policy
 /// indefinite, preventing early removal.
 /// </remarks>
 type MarshalByRefObjectInfiniteLease() =
+#if NETSTANDARD2_0
+    interface IDisposable with
+        member this.Dispose() = ()
+#else
     inherit MarshalByRefObject()
         override this.InitializeLifetimeService() : obj = null
     interface IDisposable with
         member this.Dispose() = ignore <| RemotingServices.Disconnect(this)
+#endif
 
 /// <summary>
 /// Provides an AppDomain for a particular test assembly.
@@ -41,6 +49,8 @@ type MarshalByRefObjectInfiniteLease() =
 /// assembly's location to ensure that assemblies are resolved correctly.
 /// </remarks>
 type TestAssemblyHost(source) =
+#if NETSTANDARD2_0
+#else
     let mutable appDomain =
         let setup =
             let assemblyFullPath = Path.GetFullPath(source)
@@ -56,9 +66,12 @@ type TestAssemblyHost(source) =
         let current = AppDomain.CurrentDomain.SetupInformation.TargetFrameworkName
         let evidence = new Evidence(AppDomain.CurrentDomain.Evidence)
         AppDomain.CreateDomain(setup.ApplicationName, evidence, setup)
-
+#endif
     interface IDisposable with
         member this.Dispose() =
+#if NETSTANDARD2_0
+            ()
+#else
             if appDomain <> null then
                 AppDomain.Unload(appDomain)
                 appDomain <- null
@@ -85,3 +98,4 @@ type TestAssemblyHost(source) =
             args,
             null,
             null) :?> 'P
+#endif
