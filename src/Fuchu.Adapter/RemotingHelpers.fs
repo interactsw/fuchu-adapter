@@ -6,7 +6,7 @@ open System.Reflection
 open System.Security
 open System.Security.Permissions
 
-#if NETSTANDARD2_0
+#if NETCOREAPP
 #else
 open System.Runtime.Remoting
 open System.Security.Policy
@@ -31,7 +31,7 @@ open System.Security.Policy
 /// indefinite, preventing early removal.
 /// </remarks>
 type MarshalByRefObjectInfiniteLease() =
-#if NETSTANDARD2_0
+#if NETCOREAPP
     interface IDisposable with
         member this.Dispose() = ()
 #else
@@ -49,7 +49,7 @@ type MarshalByRefObjectInfiniteLease() =
 /// assembly's location to ensure that assemblies are resolved correctly.
 /// </remarks>
 type TestAssemblyHost(source) =
-#if NETSTANDARD2_0
+#if NETCOREAPP
 #else
     let mutable appDomain =
         let setup =
@@ -69,7 +69,7 @@ type TestAssemblyHost(source) =
 #endif
     interface IDisposable with
         member this.Dispose() =
-#if NETSTANDARD2_0
+#if NETCOREAPP
             ()
 #else
             if appDomain <> null then
