@@ -1,0 +1,86 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+  For local testing, cd into the src then run:
+    dotnet pack /p:Version=1.1.42
+    nuget add -source c:\dev\TestNuGetRepos\FuchuAdapter Fuchu.Adapter\bin\Debug\Fuchu.Adapter.1.1.42.nupkg
+  substituting whatever version number you want to use for your test, and whatever folder you want
+  to use as your local NuGet repo.
+  We need to build the entire solution because we need to embed all of the 
+  -->
+
+  <PropertyGroup>
+    <TargetFrameworks>netcoreapp2.1;net462</TargetFrameworks>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <DevelopmentDependency>true</DevelopmentDependency>
+    <BuildOutputTargetFolder>build</BuildOutputTargetFolder>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <PackageId>Fuchu.Adapter</PackageId>
+    <Title>Fuchu test adapter</Title>
+    <Authors>Interact Software Ltd.</Authors>
+    <Company>Interact Software Ltd.</Company>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/interactsw/fuchu-adapter</PackageProjectUrl>
+    <Description>Visual Studio test adapter for Fuchu. Shows Fuchu tests in Visual Studio's Test Explorer, and also enables them to be run in Visual Studio Online builds.</Description>
+    <Copyright>Copyright © 2016-2020 Ian Griffiths</Copyright>
+    <PackageTags>Fuchu;Visual Studio;Test Adapter;testadapter</PackageTags>
+    <AssemblyName>Fuchu.TestAdapter</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="PackageBuildProps\EmptyFileToPopulateLibFolders.txt" />
+    <None Include="PackageBuildProps\Fuchu.Adapter.netfx.props" />
+    <None Include="PackageBuildProps\Fuchu.Adapter.netcore.props" />
+    <Compile Include="Ids.fs" />
+    <Compile Include="RemotingHelpers.fs" />
+    <Compile Include="Filters.fs" />
+    <Compile Include="SourceLocation.fs" />
+    <Compile Include="Discovery.fs" />
+    <Compile Include="Execution.fs" />
+    <None Include="Script.fsx" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <PackageReference Include="Fuchu" Version="1.1.0" />
+    <PackageReference Include="Mono.Cecil" Version="0.11.2" />
+    <PackageReference Include="Microsoft.TestPlatform.ObjectModel" Version="15.0.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
+  </ItemGroup>
+
+  <ItemGroup Label="Package">
+    <!--
+    These .props files get added to the build, giving us the opportunity to copy our DLL into the
+    build output folder, and then it gets picked up by the test framework. (The test framework uses
+    a convention: it looks for files called *.TestAdapter.dll.) But there's a slight complication.
+    
+    Visual Studio turns out to get upset if your .NET Core and .NET Framework test adapters are
+    in DLLs with the same name. So we have to give them different names. Furthermore, .NET Core
+    turns out to get upset if the filename doesn't match the assembly's simple name, so it's
+    important that the .NET Core adapter be in a file called Fuchu.TestAdapter.dll. .NET Framework
+    appears not to care, so the Fuchu.Adapter.netfx.props file renames the file to
+    Fuchu.NetFx.TestAdapter.dll. (If at some point this causes problems, we're going to have to
+    modify the build so that these assemblies have simple names that match their filenames.)
+    -->
+    <None Include="PackageBuildProps\Fuchu.Adapter.netfx.props" PackagePath="build\net462\Fuchu.Adapter.props" Pack="true" />
+    <None Include="PackageBuildProps\Fuchu.Adapter.netcore.props" PackagePath="build\netcoreapp2.1\Fuchu.Adapter.props" Pack="true" />
+
+    <!--
+    Some tooling detects which target frameworks we support based on the folders present underneath
+    either lib or ref, so it's typically a good idea to make sure those exist. (And dotnet pack
+    produces NU5127 and NU5128 warnings if they don't, for this very reason.)
+    We don't actually have anything that we want to put in either lib or ref because test adapters
+    are useful only at development time. That's why we set BuildOutputTargetFolder to build above.
+    But we want folders for our supported target frameworks to exist. And since NuGet packages are
+    ZIP files, and because of how ZIP files work, this means we need to put at least one actual
+    file in each folder, hence these empty do-nothing files.
+    -->
+    <None Include="PackageBuildProps\EmptyFileToPopulateLibFolders.txt" PackagePath="lib\net462\_._" Pack="true" />
+    <None Include="PackageBuildProps\EmptyFileToPopulateLibFolders.txt" PackagePath="lib\netcoreapp2.1\_._" Pack="true" />
+  </ItemGroup>
+
+</Project>

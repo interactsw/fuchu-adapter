@@ -99,10 +99,22 @@ type Discoverer() =
              logger: IMessageLogger,
              discoverySink: ITestCaseDiscoverySink): unit =
             try
+                #if NETCOREAPP
+                let platform = ".NET Core"
+                #else
+                let platform = ".NET FX"
+                #endif
+                System.Console.WriteLine("discovering tests")
+                logger.SendMessage(TestMessageLevel.Informational, "Fuchu.TestAdapter " + platform);
                 let vsCallback = new VsDiscoverCallbackProxy(logger)
                 for assemblyPath in (sourcesUsingFuchu sources) do
+                    logger.SendMessage(TestMessageLevel.Informational, "Fuchu.TestAdapter inspecting: " + assemblyPath);
                     use host = new TestAssemblyHost(assemblyPath)
+#if NETCOREAPP
+                    let discoverProxy:DiscoverProxy = new DiscoverProxy(Tuple.Create<IObserver<string>>(vsCallback))
+#else
                     let discoverProxy = host.CreateInAppdomain<DiscoverProxy>([|Tuple.Create<IObserver<string>>(vsCallback)|])
+#endif
                     let testList = discoverProxy.DiscoverTests(assemblyPath)
                     let locationFinder = new SourceLocationFinder(assemblyPath)
                     for { TestCode = code; TypeName = typeName; MethodName = methodName } in testList do

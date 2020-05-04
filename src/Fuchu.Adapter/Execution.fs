@@ -157,7 +157,11 @@ type ExecuteProxy(proxyHandler: Tuple<IObserver<string * string>>, assemblyPath:
 type AssemblyExecutor(proxyHandler: IObserver<string * string>, assemblyPath: string, testsToInclude: string[]) =
     let host = new TestAssemblyHost(assemblyPath)
     let wrappedArg: Tuple<IObserver<string*string>> = Tuple.Create(proxyHandler)
+#if NETCOREAPP
+    let proxy = new ExecuteProxy(wrappedArg, assemblyPath, testsToInclude)
+#else
     let proxy = host.CreateInAppdomain<ExecuteProxy>([|wrappedArg; assemblyPath; testsToInclude|])
+#endif
     interface IDisposable with
         member this.Dispose() =
             (host :> IDisposable).Dispose()
