@@ -1,5 +1,7 @@
-mode: "ContinuousDeployment"
+next-version: "2.0"
+mode: ContinuousDeployment
 branches:
   master:
+    regex: main
     tag: preview
-    increment: Minor
+    increment: patch

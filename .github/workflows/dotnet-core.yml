@@ -1,0 +1,109 @@
+# This will build any time we push to main, and also for PRs that target main.
+# It will also build any time a tag starting with 'v' is created.
+# Finally, it supports manual build execution, with the option to release to
+# GitHub and NuGet.
+
+name: Build and release
+
+on:
+  push:
+    branches: [ main ]
+  create:
+    tags: [ v* ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      createRelease:
+        description: 'Create release'     
+        required: true
+        default: 'false'
+
+jobs:
+  build:
+
+    # Using windows-latest because ubuntu-latest can't target .NET FX 4.8 as of 2020/12/02
+    runs-on: windows-latest
+
+    env:
+      CreateRelease: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event.inputs.createRelease == 'true') }}
+
+    steps:
+    - uses: actions/checkout@v2
+
+    # Step required by GitVersion.
+    # The actions/checkout@v2 action minimizes the work it performs, which is normally good,
+    # but because it avoids fetching anything other than the commit we want to build, GitVersion
+    # doesn't have the information it requires to determine the correct version.
+    # TODO: is this overkill? Does this end up fetching more than GitVersion needs?
+    - name: Fetch all history for all tags and branches
+      run: git fetch --prune --unshallow
+
+      
+    - name: Setup .NET Core
+      uses: actions/setup-dotnet@v1
+      with:
+        # TODO: do GitHub Actions support something similar to 3.1.x in AzDevOps? And if so,
+        # should we use that? If not, what's a good current version, because this will currently
+        # be a snapshot of whatever happened to be current when I wrote the version of this
+        # file from which this was cribbed.
+        dotnet-version: 3.1.301
+
+    - name: Setup GitVersion
+      # There appear to be two options for installing. There's this:
+      # uses: actions/setup-gitversion@v1.0.0
+      # with:
+      #  gitversion-version: 5.2.4
+      # However that doesn't seem to have a corresponding task for running
+      # the tool, so we use this instead, because it aligns with the following
+      # step that runs the tool
+      uses: gittools/actions/gitversion/setup@v0.9.7
+      with:
+          versionSpec: '5.2.x'
+
+    - name: Use GitVersion
+      uses: gittools/actions/gitversion/execute@v0.9.7
+      id: gitversion # step id used as reference for output values
+      env:
+          # We shouldn't need this, but it looks like https://github.com/GitTools/actions/issues/273
+          # hasn't yet made it through
+          ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+
+
+    - name: Install dependencies
+      working-directory: src
+      run: dotnet restore
+      
+    - name: Build
+      working-directory: src
+      run: dotnet build --configuration Release --no-restore /p:Version=${{ steps.gitversion.outputs.semVer }}
+      
+    - name: Test
+      working-directory: src
+      run: dotnet test --configuration Release --no-build --verbosity normal /p:Version=${{ steps.gitversion.outputs.semVer }}
+
+    - name: Create NuGet packages
+      working-directory: src
+      run: dotnet pack --configuration Release --no-build --output packages /p:Version=${{ steps.gitversion.outputs.semVer }}
+
+    - name: Upload NuGet package artifact
+      uses: actions/upload-artifact@v1.0.0
+      with:
+        name: NuGet packages
+        path: src/packages
+
+    - name: Create GitHub Release
+      id: create_release
+      if: env.CreateRelease == 'true'
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ steps.gitversion.outputs.semVer }}
+        release_name: Release v${{ steps.gitversion.outputs.semVer }}
+        draft: false
+        prerelease: ${{ steps.gitversion.outputs.preReleaseTag != '' }}
+
+    - name: Publish NuGet Package
+      if: env.CreateRelease == 'true'
+      run: dotnet nuget push **/*.nupkg --api-key ${{ secrets.nuget_api_key }} --source https://api.nuget.org/v3/index.json

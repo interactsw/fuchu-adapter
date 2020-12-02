@@ -6,10 +6,10 @@ open System.Reflection
 open System.Security
 open System.Security.Permissions
 
-#if NETCOREAPP
-#else
+#if NETFX
 open System.Runtime.Remoting
 open System.Security.Policy
+#else
 #endif
 
 /// <summary>
@@ -31,14 +31,14 @@ open System.Security.Policy
 /// indefinite, preventing early removal.
 /// </remarks>
 type MarshalByRefObjectInfiniteLease() =
-#if NETCOREAPP
-    interface IDisposable with
-        member this.Dispose() = ()
-#else
+#if NETFX
     inherit MarshalByRefObject()
         override this.InitializeLifetimeService() : obj = null
     interface IDisposable with
         member this.Dispose() = ignore <| RemotingServices.Disconnect(this)
+#else
+    interface IDisposable with
+        member this.Dispose() = ()
 #endif
 
 /// <summary>
@@ -49,8 +49,7 @@ type MarshalByRefObjectInfiniteLease() =
 /// assembly's location to ensure that assemblies are resolved correctly.
 /// </remarks>
 type TestAssemblyHost(source) =
-#if NETCOREAPP
-#else
+#if NETFX
     let mutable appDomain =
         let setup =
             let assemblyFullPath = Path.GetFullPath(source)
@@ -69,9 +68,7 @@ type TestAssemblyHost(source) =
 #endif
     interface IDisposable with
         member this.Dispose() =
-#if NETCOREAPP
-            ()
-#else
+#if NETFX
             if appDomain <> null then
                 AppDomain.Unload(appDomain)
                 appDomain <- null
@@ -98,4 +95,6 @@ type TestAssemblyHost(source) =
             args,
             null,
             null) :?> 'P
+#else
+            ()
 #endif
