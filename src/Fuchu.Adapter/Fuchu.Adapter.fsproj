@@ -1,5 +1,4 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <!--
   For local testing, cd into the src then run:
     dotnet pack /p:Version=1.1.42
@@ -10,15 +9,29 @@
   -->
 
   <PropertyGroup>
-    <TargetFrameworks>netcoreapp2.1;net462</TargetFrameworks>
+    <!--
+    It may seem odd to target net462 and netetcoreapp2.1 instead of just netstandard2.0, but it turns out
+    that because we need significantly different code in .NET FX, we need a target specific to that, and then
+    it turns out that even though the .NET Core version doesn't depend on anything not also available
+    in .NET Standard 2.0, it causes problems if we attempt to offer .NET Standard 2.0, because that
+    version can end up getting picked on .NET Framework (even when we've offered a .NET Framework
+    version). So we only offer .NET Standard 2.1 or later, because that won't get picked up by
+    any .NET FX runtime.    
+    -->
+    <TargetFrameworks>netcoreapp2.1;netstandard2.1;net462</TargetFrameworks>
   </PropertyGroup>
 
+  <PropertyGroup Condition="$(TargetFramework) == 'NET462'">
+    <DefineConstants>$(DefineConstants);NETFX</DefineConstants>
+  </PropertyGroup>
+
+  
   <PropertyGroup>
     <DevelopmentDependency>true</DevelopmentDependency>
     <BuildOutputTargetFolder>build</BuildOutputTargetFolder>
   </PropertyGroup>
 
-  <PropertyGroup>
+    <PropertyGroup>
     <PackageId>Fuchu.Adapter</PackageId>
     <Title>Fuchu test adapter</Title>
     <Authors>Interact Software Ltd.</Authors>
@@ -30,25 +43,22 @@
     <PackageTags>Fuchu;Visual Studio;Test Adapter;testadapter</PackageTags>
     <AssemblyName>Fuchu.TestAdapter</AssemblyName>
   </PropertyGroup>
-
+  
   <ItemGroup>
     <Content Include="PackageBuildProps\EmptyFileToPopulateLibFolders.txt" />
-    <None Include="PackageBuildProps\Fuchu.Adapter.netfx.props" />
-    <None Include="PackageBuildProps\Fuchu.Adapter.netcore.props" />
     <Compile Include="Ids.fs" />
     <Compile Include="RemotingHelpers.fs" />
     <Compile Include="Filters.fs" />
     <Compile Include="SourceLocation.fs" />
+    <Compile Include="TestNaming.fs" />
     <Compile Include="Discovery.fs" />
     <Compile Include="Execution.fs" />
-    <None Include="Script.fsx" />
   </ItemGroup>
-
 
   <ItemGroup>
     <PackageReference Include="Fuchu" Version="1.1.0" />
-    <PackageReference Include="Mono.Cecil" Version="0.11.2" />
     <PackageReference Include="Microsoft.TestPlatform.ObjectModel" Version="15.0.0" />
+    <PackageReference Include="Mono.Cecil" Version="0.11.2" />
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3" />
   </ItemGroup>
 
@@ -68,6 +78,7 @@
     -->
     <None Include="PackageBuildProps\Fuchu.Adapter.netfx.props" PackagePath="build\net462\Fuchu.Adapter.props" Pack="true" />
     <None Include="PackageBuildProps\Fuchu.Adapter.netcore.props" PackagePath="build\netcoreapp2.1\Fuchu.Adapter.props" Pack="true" />
+    <None Include="PackageBuildProps\Fuchu.Adapter.netcore.props" PackagePath="build\netstandard2.1\Fuchu.Adapter.props" Pack="true" />
 
     <!--
     Some tooling detects which target frameworks we support based on the folders present underneath
@@ -81,6 +92,6 @@
     -->
     <None Include="PackageBuildProps\EmptyFileToPopulateLibFolders.txt" PackagePath="lib\net462\_._" Pack="true" />
     <None Include="PackageBuildProps\EmptyFileToPopulateLibFolders.txt" PackagePath="lib\netcoreapp2.1\_._" Pack="true" />
+    <None Include="PackageBuildProps\EmptyFileToPopulateLibFolders.txt" PackagePath="lib\netstandard2.1\_._" Pack="true" />
   </ItemGroup>
-
 </Project>

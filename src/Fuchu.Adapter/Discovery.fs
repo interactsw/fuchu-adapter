@@ -14,14 +14,18 @@ open Fuchu.Impl
 open Filters
 open RemotingHelpers
 open SourceLocation
+open TestNaming
+
+// Can we use this in Execution too? To make naming handling common? Or is there a reason this is a struct?
+// I think it's a struct because we need it to be able to traverse AppDomain boundaries when running on .NET FX.
 
 type DiscoveryResult =
     struct
-        val TestCode:  string
-        val TypeName:  string
-        val MethodName: string
-        new(testCode: string, typeName: string, methodName: string) =
-            { TestCode = testCode; TypeName = typeName; MethodName = methodName }
+        val DisplayName: string
+        val TypeName:    string
+        val MethodName:  string
+        new(displayName: string, typeName: string, methodName: string) =
+            { DisplayName = displayName; TypeName = typeName; MethodName = methodName }
     end
 
 type VsDiscoverCallbackProxy(log: IMessageLogger) =
@@ -38,54 +42,31 @@ type DiscoverProxy(proxyHandler:Tuple<IObserver<string>>) =
     inherit MarshalByRefObjectInfiniteLease()
     let observer = proxyHandler.Item1
 
-    let isFsharpFuncType t =
-        let baseType =
-            let rec findBase (t:Type) =
-                if t.BaseType = typeof<obj> then
-                    t
-                else
-                    findBase t.BaseType
-            findBase t
-        baseType.IsGenericType && baseType.GetGenericTypeDefinition() = typedefof<FSharpFunc<unit, unit>>
-
-    // If the test function we've found doesn't seem to be in the test assembly, it's
-    // possible we're looking at an FsCheck 'testProperty' style check. In that case,
-    // the function of interest (i.e., the one in the test assembly, and for which we
-    // might be able to find corresponding source code) is referred to in a field
-    // of the function object.
-    let getFuncTypeToUse (testFunc:TestCode) (asm:Assembly) =
-        let t = testFunc.GetType()
-        if t.Assembly.FullName = asm.FullName then
-            t
-        else
-            let nestedFunc =
-                 t.GetFields()
-                |> Seq.tryFind (fun f -> isFsharpFuncType f.FieldType)
-            match nestedFunc with
-                | Some f -> f.GetValue(testFunc).GetType()
-                | None -> t
-
     member this.DiscoverTests(source: string) =
+        observer.OnNext("DiscoverTests")
+
         let asm = Assembly.LoadFrom(source)
+        observer.OnNext("Loaded assembly")
+        for a in asm.GetReferencedAssemblies() do
+            observer.OnNext(a.FullName)
+
+
         if not (asm.GetReferencedAssemblies().Any(fun a -> a.Name = "Fuchu")) then
             observer.OnNext(sprintf "Skipping: %s because it does not reference Fuchu" source)
             Array.empty
         else            
+            observer.OnNext(sprintf "%s references Fuchu" source)
             let tests =
                 match testFromAssembly (asm) with
                 | Some t -> t
                 | None -> TestList []
+            observer.OnNext(sprintf "%s: %d tests" source (Seq.length (Fuchu.Test.toTestCodeList tests)))
+            for (s, tc) in (Fuchu.Test.toTestCodeList tests) do
+                observer.OnNext(sprintf " %s: %A tests" s tc)
             Fuchu.Test.toTestCodeList tests
             |> Seq.map (fun (name, testFunc) ->
-                let t = getFuncTypeToUse testFunc asm
-                let m =
-                    query
-                      {
-                        for m in t.GetMethods() do
-                        where ((m.Name = "Invoke") && (m.DeclaringType = t))
-                        exactlyOne
-                      }
-                new DiscoveryResult(name, t.FullName, m.Name))
+                let nameInfo = nameInfoFromTestNameAndTestCode asm (name, testFunc)
+                new DiscoveryResult(nameInfo.DisplayName, nameInfo.TypeName, nameInfo.MethodName))
             |> Array.ofSeq
 
 [<FileExtension(".dll")>]
@@ -99,31 +80,50 @@ type Discoverer() =
              logger: IMessageLogger,
              discoverySink: ITestCaseDiscoverySink): unit =
             try
-                #if NETCOREAPP
-                let platform = ".NET Core"
-                #else
+#if NETFX
                 let platform = ".NET FX"
-                #endif
+#else
+                let platform = ".NET Core"
+#endif
                 System.Console.WriteLine("discovering tests")
-                logger.SendMessage(TestMessageLevel.Informational, "Fuchu.TestAdapter " + platform);
+                logger.SendMessage(TestMessageLevel.Informational, "Fuchu.TestAdapter " + platform + ", " + (DateTime.Now.ToString()))
                 let vsCallback = new VsDiscoverCallbackProxy(logger)
                 for assemblyPath in (sourcesUsingFuchu sources) do
                     logger.SendMessage(TestMessageLevel.Informational, "Fuchu.TestAdapter inspecting: " + assemblyPath);
                     use host = new TestAssemblyHost(assemblyPath)
-#if NETCOREAPP
-                    let discoverProxy:DiscoverProxy = new DiscoverProxy(Tuple.Create<IObserver<string>>(vsCallback))
-#else
+#if NETFX
                     let discoverProxy = host.CreateInAppdomain<DiscoverProxy>([|Tuple.Create<IObserver<string>>(vsCallback)|])
+#else
+                    let discoverProxy:DiscoverProxy = new DiscoverProxy(Tuple.Create<IObserver<string>>(vsCallback))
 #endif
+                    let obs = vsCallback :> IObserver<string>
+                    obs.OnNext("Testing callback")
                     let testList = discoverProxy.DiscoverTests(assemblyPath)
+                    logger.SendMessage(TestMessageLevel.Informational, (sprintf "Fuchu.TestAdapter %s: found %d tests"  assemblyPath (Array.length testList)));
+
                     let locationFinder = new SourceLocationFinder(assemblyPath)
-                    for { TestCode = code; TypeName = typeName; MethodName = methodName } in testList do
-                        let tc = new TestCase(code, Ids.ExecutorUri, assemblyPath)
+                    for { DisplayName = displayName; TypeName = typeName; MethodName = methodName } in testList do
+                        logger.SendMessage(TestMessageLevel.Informational, (sprintf "Fuchu.TestAdapter %s: '%s' '%s' '%s'"  assemblyPath displayName typeName methodName));
+
+                        let ni:NameInfo = { DisplayName = displayName; TypeName = typeName; MethodName = methodName }
+                        let tc = new TestCase(makeFullyQualifiedName ni, Ids.ExecutorUri, assemblyPath, DisplayName = displayName)
                         match locationFinder.getSourceLocation typeName methodName with
                         | Some location ->
                             tc.CodeFilePath <- location.SourcePath
                             tc.LineNumber <- location.LineNumber
                         | None -> ()
+                        logger.SendMessage(
+                            TestMessageLevel.Informational,
+                            (sprintf
+                                "TestCast - FullyQualifiedName: '%s' Id: '%s' DisplayName: '%s' CodeFilePath: '%s' ExecutorUri: '%s' LineNumber: %d Source: '%s'"
+                                tc.FullyQualifiedName
+                                (tc.Id.ToString())
+                                tc.DisplayName
+                                tc.CodeFilePath
+                                (tc.ExecutorUri.ToString())
+                                tc.LineNumber
+                                tc.Source))
+
                         discoverySink.SendTestCase(tc)
             with
             | x -> logger.SendMessage(Logging.TestMessageLevel.Error, x.ToString())
