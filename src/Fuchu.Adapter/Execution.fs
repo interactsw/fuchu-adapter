@@ -17,6 +17,7 @@ open Fuchu.Impl
 
 open Filters
 open RemotingHelpers
+open Diagnostics
 open TestNaming
 
 // When running in the .NET Framework, we run tests in a separate AppDomain to enable us to isolate
@@ -152,6 +153,16 @@ type VsCallbackForwarder(observer: IObserver<string * string>, assemblyPath: str
                 Keys.Message, message
             ])
 
+type private LogWrapper(vsCallback:VsCallbackForwarder) =
+    interface GenericLogger with
+        member this.Trace(msg: string) =
+            vsCallback.LogInfo(msg)
+        member this.Info(msg: string): unit = 
+            vsCallback.LogInfo(msg)
+        member this.Warning(msg: string): unit = 
+            raise (System.NotImplementedException())
+        member this.Error(msg: string): unit = 
+            raise (System.NotImplementedException())
 
 // The curious 1-tuple argument here is so that we can force the AppDomain class to locate the correct
 // constructor. It enables us to pass in an argument that is unambiguously typed as the required
@@ -161,12 +172,13 @@ type VsCallbackForwarder(observer: IObserver<string * string>, assemblyPath: str
 type ExecuteProxy(proxyHandler: Tuple<IObserver<string * string>>, assemblyPath: string, testsToInclude: string[]) =
     inherit MarshalByRefObjectInfiniteLease()
     let vsCallback: VsCallbackForwarder = new VsCallbackForwarder(proxyHandler.Item1, assemblyPath)
-
+    let logger = new FuchuAdapterLogger(new LogWrapper(vsCallback))
     member this.ExecuteTests() =
-        if testsToInclude = null then
-            vsCallback.LogInfo(sprintf "Executing all tests in %s" assemblyPath)
-        else
-            vsCallback.LogInfo(sprintf "Executing tests from: %s. %d tests (%s)" assemblyPath testsToInclude.Length (String.Join(",", testsToInclude)))
+        use _logExecution =
+            if testsToInclude = null then
+                logger.ExecutingAllTests(assemblyPath)
+            else
+                logger.ExecutingSpecificTests(assemblyPath, testsToInclude)
 
         let asm = Assembly.LoadFrom(assemblyPath)
         if not (asm.GetReferencedAssemblies().Any(fun a -> a.Name = "Fuchu")) then

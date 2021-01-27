@@ -46,6 +46,7 @@
   
   <ItemGroup>
     <Content Include="PackageBuildProps\EmptyFileToPopulateLibFolders.txt" />
+    <Compile Include="Diagnostics.fs" />
     <Compile Include="Ids.fs" />
     <Compile Include="RemotingHelpers.fs" />
     <Compile Include="Filters.fs" />
